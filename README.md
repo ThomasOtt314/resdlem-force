@@ -101,7 +101,7 @@ geometry and `ELEV_M`. `sample=200` runs a random trial.
 
 ```python
 redlem_force.plot_cells('owen_master_v1.gpkg', id_col='OWEN_ID',
-                      ids=['Hydrolakes_31392'], title_col=None,
+                      ids=['BORGIS_146', 'BORGIS_64'], title_col=None,
                       out_dir='figs', dpi=300,
                       config=redlem_force.RunConfig(project='nasa-revap'))
 ```
