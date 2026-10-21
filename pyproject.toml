@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "redlem-force"
+version = "0.13.0"
+description = "Extract DLEM forcing data (URMA met + PRISM/URMA precip) for reservoir geometries from Google Earth Engine."
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = [
+    "earthengine-api",
+    "polars>=1.0",
+    "shapely>=2.0",
+    "pyproj",
+    "numpy",
+    "requests",
+    "geopandas",
+]
+
+[project.optional-dependencies]
+test = ["pytest"]
+quota = ["google-cloud-monitoring"]
+plot = ["matplotlib>=3.7", "contextily"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
