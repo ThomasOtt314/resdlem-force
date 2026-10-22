@@ -29,7 +29,7 @@ from .cells import _select_cells_frame as select_cells_frame
 from .config import RunConfig
 from .geometry import reproject
 
-log = logging.getLogger('redlem_force')
+log = logging.getLogger('resdlem_force')
 
 ELEV_COL = 'ELEV_M'
 WM_COL = 'WATER_MASK'
@@ -37,7 +37,7 @@ N_COL = 'N_CELLS'
 
 
 def check_written_valid(geoms, ids, what: str):
-    """Cell polygons redlem-force returns must be valid in the output CRS
+    """Cell polygons resdlem-force returns must be valid in the output CRS
     (they are built valid; this guards the reprojection). Raises if not."""
     bad = [i for i, g in zip(ids, geoms)
            if g is not None and not g.is_valid]
@@ -84,7 +84,7 @@ def _input(geometry, *, layer):
         return geometry
     path = Path(geometry)
     gdf = gpd.read_file(path, layer=layer) if layer else gpd.read_file(path)
-    log.info('read %d features from %s (crs %s)', len(gdf), path, gdf.crs)
+    log.debug('read %d features from %s (crs %s)', len(gdf), path, gdf.crs)
     return gdf
 
 
@@ -99,7 +99,7 @@ def _checked(gdf, *, id_col, new_cols, sample, sample_seed):
         gdf = gdf.drop(columns=old)
     if sample:
         gdf = gdf.sample(n=min(sample, len(gdf)), random_state=sample_seed)
-        log.info('sampled %d features (seed %d)', len(gdf), sample_seed)
+        log.debug('sampled %d features (seed %d)', len(gdf), sample_seed)
     return gdf
 
 
@@ -142,6 +142,7 @@ def urma_cells(geometry, *, id_col: str, config: RunConfig, layer=None,
     gdf = _input(geometry, layer=layer)
     gdf = _checked(gdf, id_col=id_col, new_cols=(N_COL, ELEV_COL, WM_COL),
                    sample=sample, sample_seed=sample_seed)
+    log.info('select_urma_cells: processing %d geometries', len(gdf))
     native = _native(gdf, id_col)
     if water_mask_col is not None:
         if water_mask_col not in gdf.columns:
@@ -161,11 +162,7 @@ def urma_cells(geometry, *, id_col: str, config: RunConfig, layer=None,
         pl.col('cell_elev_m').alias(ELEV_COL),
         (pl.col('cell_method') == 'water_mask').cast(pl.Int8).alias(WM_COL),
         pl.col('cell_geometry'))
-    out = _assemble(gdf, id_col, add, 'URMA cell')
-    log.info('URMA cells: %d reservoirs; %s 1 -> %d, 0 -> %d; %d with no '
-             'cells', len(out), WM_COL, int((out[WM_COL] == 1).sum()),
-             int((out[WM_COL] == 0).sum()), int(out.geometry.isna().sum()))
-    return out
+    return _assemble(gdf, id_col, add, 'URMA cell')
 
 
 def prism_cells(geometry, *, id_col: str, config: RunConfig, layer=None,
@@ -174,13 +171,10 @@ def prism_cells(geometry, *, id_col: str, config: RunConfig, layer=None,
     gdf = _input(geometry, layer=layer)
     gdf = _checked(gdf, id_col=id_col, new_cols=(N_COL,), sample=sample,
                    sample_seed=sample_seed)
+    log.info('select_prism_cells: processing %d geometries', len(gdf))
     cells = _select_frame(_native(gdf, id_col), id_col=id_col,
                           crs=gdf.crs.to_wkt(), config=config,
                           source='prism800')
     add = cells.select(pl.col(id_col), pl.col('n_cells').alias(N_COL),
                        pl.col('cell_geometry'))
-    out = _assemble(gdf, id_col, add, 'PRISM cell')
-    n = out[N_COL]
-    log.info('PRISM cells: %d reservoirs; %d single cells, %d with 2+ cells',
-             len(out), int((n == 1).sum()), int((n > 1).sum()))
-    return out
+    return _assemble(gdf, id_col, add, 'PRISM cell')

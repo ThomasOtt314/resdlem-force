@@ -12,7 +12,7 @@ Stored as polygons only (union of the cell squares; one square for a single
 cell), like the URMA cells. Extraction sends these polygons as they are.
 No water mask. Built locally from the grid definition; the only Earth Engine
 call reads the grid (CRS + affine transform) of the PRISM 800 m reference
-image (redlem_force.grids).
+image (resdlem_force.grids).
 
 Run it once and store the result next to the URMA cells; extract_urma
 needs these cells for precip.
@@ -31,7 +31,7 @@ from . import grid_cells, grids
 from .config import PRECIP_SOURCES, RunConfig
 from .geometry import internal_points, load_geometries, reproject
 
-log = logging.getLogger('redlem_force')
+log = logging.getLogger('resdlem_force')
 
 # Cells are built on the PRISM 800 m grid only; PRISM 4 km is reduced over
 # the same cells on that grid (extract.py).
@@ -41,7 +41,7 @@ N_COL = 'N_CELLS'
 
 
 def grid_from_ee(source: str, config: RunConfig) -> grid_cells.Grid:
-    """PRISM 800 m grid from its reference image (redlem_force.grids)."""
+    """PRISM 800 m grid from its reference image (resdlem_force.grids)."""
     if source not in PRISM_SOURCES:
         raise ValueError(f'source must be one of {sorted(PRISM_SOURCES)}, '
                          f'got {source!r}')
@@ -51,7 +51,7 @@ def grid_from_ee(source: str, config: RunConfig) -> grid_cells.Grid:
 def cells_for(gs, points_wgs84, grid):
     """(polygons in grid CRS, n_cells, single_cell) for a GeometrySet."""
     geoms, n, single = grid_cells.build(gs, points_wgs84, grid)
-    log.info('PRISM cells (largest overlap until the polygon area is '
+    log.debug('PRISM cells (largest overlap until the polygon area is '
              'reached): %d reservoirs, %d single cells, median %d, max %d '
              'cells', len(n), int(single.sum()), int(np.median(n)),
              int(n.max()))
@@ -93,17 +93,23 @@ def select_prism_cells(geometry, *, id_col: str, config: RunConfig,
     layer          : layer to read from a multi-layer GeoPackage (path input)
     sample         : random N reservoirs, for a trial (path / GeoDataFrame)
     """
+    log.info('select_prism_cells: started')
     if isinstance(geometry, pl.DataFrame):
         if crs is None:
             raise ValueError('crs is required when geometry is a DataFrame')
-        return _select_frame(geometry, id_col=id_col, crs=crs, config=config,
-                             source='prism800', geometry_col=geometry_col)
-    from .files import is_geodataframe, prism_cells
-    if not (is_geodataframe(geometry)
-            or isinstance(geometry, (str, os.PathLike))):
-        raise TypeError('geometry must be a GeoDataFrame, a file path (.shp / '
-                        '.gpkg) or a polars DataFrame, got '
-                        f'{type(geometry).__name__}')
-    return prism_cells(geometry, id_col=id_col, config=config,
-                       layer=layer,
-                       sample=sample, sample_seed=sample_seed)
+        log.info('select_prism_cells: processing %d geometries',
+                 geometry.height)
+        out = _select_frame(geometry, id_col=id_col, crs=crs, config=config,
+                            source='prism800', geometry_col=geometry_col)
+    else:
+        from .files import is_geodataframe, prism_cells
+        if not (is_geodataframe(geometry)
+                or isinstance(geometry, (str, os.PathLike))):
+            raise TypeError('geometry must be a GeoDataFrame, a file path '
+                            '(.shp / .gpkg) or a polars DataFrame, got '
+                            f'{type(geometry).__name__}')
+        out = prism_cells(geometry, id_col=id_col, config=config,
+                          layer=layer,
+                          sample=sample, sample_seed=sample_seed)
+    log.info('select_prism_cells: finished')
+    return out

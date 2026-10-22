@@ -60,7 +60,7 @@ from .geometry import (chunk_by_size, geojson_bytes, ids_as_str,
 from .met import prep_image
 from .quota import QuotaExceededError, check_quota
 
-log = logging.getLogger('redlem_force')
+log = logging.getLogger('resdlem_force')
 
 
 # ---------------------------------------------------------------------------
@@ -332,7 +332,7 @@ def _precip_long(df: pl.DataFrame, labels) -> pl.DataFrame:
 
 
 def _prism800_proj():
-    """PRISM 800 m reference grid (redlem_force.grids) as an ee.Projection,
+    """PRISM 800 m reference grid (resdlem_force.grids) as an ee.Projection,
     used for prism800 and prism4k."""
     return grids.ee_projection('prism800')
 
@@ -340,7 +340,7 @@ def _prism800_proj():
 def _reduce_precip(coll_id, band, labels, features, cfg, grid_proj=None):
     """Plain (unweighted) mean of each feature's pixels for every day in
     labels, in one request, on grid_proj (a reference grid from
-    redlem_force.grids; default: the source's own grid)."""
+    resdlem_force.grids; default: the source's own grid)."""
     bands = [f'p{lab}' for lab in labels]
     img = ee.Image.cat([_one(coll_id, lab).select([band], [b])
                         for lab, b in zip(labels, bands)])

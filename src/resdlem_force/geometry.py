@@ -17,7 +17,7 @@ import shapely
 from shapely.geometry import MultiPolygon, Polygon
 from shapely.ops import polylabel
 
-log = logging.getLogger('redlem_force')
+log = logging.getLogger('resdlem_force')
 
 # Projected CRS used for centroids when the input CRS is geographic.
 # CONUS Albers, same CRS as revap_master_v6.
@@ -103,9 +103,9 @@ def load_geometries(df: pl.DataFrame, id_col: str, geometry_col: str,
       polygon parts; repaired IDs are logged and returned.
     label        : what the geometries are, for the log ('native reservoir',
                    'URMA cell', ...); default the column name
-    expect_valid : True for cell polygons built by redlem-force (always
+    expect_valid : True for cell polygons built by resdlem-force (always
                    valid): a repair is logged as a WARNING, since it means
-                   the file did not come from redlem-force or was altered
+                   the file did not come from resdlem-force or was altered
     """
     ids = ids_as_str(df, id_col)
     if geometry_col not in df.columns:
@@ -137,11 +137,11 @@ def load_geometries(df: pl.DataFrame, id_col: str, geometry_col: str,
         what = label or repr(geometry_col)
         if expect_valid:
             log.warning('repaired %d invalid %s geometries with make_valid '
-                        '(not expected: redlem-force builds valid cell '
+                        '(not expected: resdlem-force builds valid cell '
                         'polygons), e.g. %s', len(repaired), what,
                         repaired[:5])
         else:
-            log.info('repaired %d invalid %s geometries with make_valid, '
+            log.debug('repaired %d invalid %s geometries with make_valid, '
                      'e.g. %s', len(repaired), what, repaired[:5])
 
     nonpoly = [ids[i] for i, g in enumerate(geoms)

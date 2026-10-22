@@ -1,12 +1,15 @@
 [build-system]
-requires = ["setuptools>=61"]
+requires = ["setuptools>=77"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "redlem-force"
-version = "0.13.0"
+name = "resdlem-force"
+version = "1.0.0"
 description = "Extract DLEM forcing data (URMA met + PRISM/URMA precip) for reservoir geometries from Google Earth Engine."
 readme = "README.md"
+license = "Apache-2.0"
+license-files = ["LICENSE"]
+authors = [{ name = "Thomas Ott" }]
 requires-python = ">=3.9"
 dependencies = [
     "earthengine-api",
@@ -17,12 +20,13 @@ dependencies = [
     "requests",
     "geopandas",
     "pandas",
+    "matplotlib>=3.7",
+    "contextily",
+    "google-cloud-monitoring",
 ]
 
 [project.optional-dependencies]
 test = ["pytest"]
-quota = ["google-cloud-monitoring"]
-plot = ["matplotlib>=3.7", "contextily"]
 
 [tool.setuptools.packages.find]
 where = ["src"]

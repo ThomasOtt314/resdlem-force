@@ -11,14 +11,16 @@ URMA_ID = 'projects/climate-engine-pro/assets/noaa-urma/daily'
 PRISM_800_ID = 'projects/sat-io/open-datasets/OREGONSTATE/PRISM_800_DAILY'
 PRISM_4K_ID = 'OREGONSTATE/PRISM/ANd'
 
-# Per-cell values for URMA cell selection, read on the URMA grid
-# (same lattice as the URMA grid; checked 2026-10-13).
-ELEV_ID = 'projects/bor-evap/assets/rtma_elev'
-WM_ID = 'projects/bor-evap/assets/rtma_water_mask'
+# Per-cell values for URMA cell selection, read on the URMA grid.
+# Elevation: URMA ancillary asset, band 'elevation', m; the same data as
+# the earlier rtma_elev asset (same lattice as the URMA grid).
+# Water mask: same lattice as the URMA grid, 1 = water (checked 2026-10-21).
+ELEV_ID = 'projects/climate-engine-pro/assets/noaa-urma/ancillary/elevation'
+WM_ID = 'projects/climate-engine-pro/assets/noaa-urma/ancillary/water_mask'
 
 HIGH_VOLUME_URL = 'https://earthengine-highvolume.googleapis.com'
 
-# The ONLY source of grid information (redlem_force.grids): the reference
+# The ONLY source of grid information (resdlem_force.grids): the reference
 # image of each source as (collection, band, year of the first image by
 # system:index, or None = first image of the collection).
 GRID_REFERENCE = {
@@ -108,10 +110,8 @@ class RunConfig:
                            monthly Earth Engine quota (needs
                            google-cloud-monitoring).
     eecu_s_per_reservoir_day : cost estimate used by that check. Default
-                           0.15 = URMA met over 200 reservoirs, one date,
-                           measured with the old per-day method (precip
-                           NOT included); not re-measured for the current
-                           method.
+                           0.012 = measured ~0.0102 (2026-10-15, URMA met +
+                           PRISM precip, 5-day blocks), rounded up.
     quota_fraction       : stop if the estimate exceeds this fraction of the
                            remaining quota (1.0 = all of it).
     """
@@ -126,7 +126,7 @@ class RunConfig:
     retry_wait_secs: float = 10.0
     download_timeout_secs: float = 600.0
     check_quota: bool = True
-    eecu_s_per_reservoir_day: float = 0.15
+    eecu_s_per_reservoir_day: float = 0.012
     quota_fraction: float = 1.0
 
     def __post_init__(self):

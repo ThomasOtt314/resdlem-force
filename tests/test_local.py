@@ -25,9 +25,9 @@ import shapely
 import shapely.affinity
 from shapely.geometry import Polygon
 
-from redlem_force.config import RunConfig
-from redlem_force.dates import label, normalize_dates
-from redlem_force.geometry import (chunked, internal_point_lat, load_geometries,
+from resdlem_force.config import RunConfig
+from resdlem_force.dates import label, normalize_dates
+from resdlem_force.geometry import (chunked, internal_point_lat, load_geometries,
                                  reproject, to_geojson)
 
 
@@ -154,8 +154,8 @@ def test_runconfig_validation():
 
 # --- output assembly (no Earth Engine) ---------------------------------------
 def test_finalize_schema_and_join():
-    from redlem_force.config import ID_PROP, OUTPUT_COLS_AFTER_ID, URMA_OUTPUT
-    from redlem_force.extract import Plan, _finalize
+    from resdlem_force.config import ID_PROP, OUTPUT_COLS_AFTER_ID, URMA_OUTPUT
+    from resdlem_force.extract import Plan, _finalize
 
     row = {ID_PROP: ['a', 'b'], 'date': ['20200715'] * 2,
            'pr': ['1.5', None], 'pr_source': ['prism800', None],
@@ -173,8 +173,8 @@ def test_finalize_schema_and_join():
 
 
 def test_finalize_without_precip_drops_precip_columns():
-    from redlem_force.config import ID_PROP, OUTPUT_COLS_AFTER_ID, URMA_OUTPUT
-    from redlem_force.extract import Plan, _finalize
+    from resdlem_force.config import ID_PROP, OUTPUT_COLS_AFTER_ID, URMA_OUTPUT
+    from resdlem_force.extract import Plan, _finalize
 
     row = {ID_PROP: ['a'], 'date': ['20200715'], 'urma_status': ['permanent']}
     for c in URMA_OUTPUT.values():
@@ -187,7 +187,7 @@ def test_finalize_without_precip_drops_precip_columns():
 
 # --- request splitting (no Earth Engine) ---------------------------------------
 def test_solve_split_halves_too_big_requests():
-    from redlem_force.ee_utils import solve_split
+    from resdlem_force.ee_utils import solve_split
     calls = []
 
     def fetch(items):
@@ -210,8 +210,8 @@ def test_solve_split_halves_too_big_requests():
 def _values(w=20, h=20, elev=None, wm=None):
     """CellValues on a 1 km test grid in EPSG:5070 with origin (0, 0),
     rows going south."""
-    from redlem_force.cells import CellValues
-    from redlem_force.grid_cells import Grid
+    from resdlem_force.cells import CellValues
+    from resdlem_force.grid_cells import Grid
     grid = Grid('EPSG:5070', 1000.0, 0.0, -1000.0, 0.0)
     e = np.zeros((h, w)) if elev is None else elev
     m = np.zeros((h, w)) if wm is None else wm
@@ -225,7 +225,7 @@ def _cell_box(col0, row0, ncol, nrow, pad=0.0):
 
 
 def test_urma_select_water_mask_rule():
-    from redlem_force.cells import select_one
+    from resdlem_force.cells import select_one
     wm = np.zeros((20, 20))
     wm[5, 5] = wm[5, 6] = 1                              # two water cells
     v = _values(wm=wm)
@@ -238,7 +238,7 @@ def test_urma_select_water_mask_rule():
 
 
 def test_urma_select_overlap_then_elevation():
-    from redlem_force.cells import select_one
+    from resdlem_force.cells import select_one
     elev = np.zeros((20, 20))
     elev[5:8, 5:8] = [[10, 20, 30], [40, 50, 60], [70, 80, 90]]
     v = _values(elev=elev)
@@ -256,7 +256,7 @@ def test_urma_select_overlap_then_elevation():
 
 
 def test_urma_select_flag_column_and_fallback():
-    from redlem_force.cells import select_one
+    from resdlem_force.cells import select_one
     v = _values()                                         # no water anywhere
     geom = _cell_box(2, 2, 2, 2, pad=-10)
     r = select_one(geom, v, flag=1)
@@ -270,7 +270,7 @@ def test_urma_select_flag_column_and_fallback():
 
 
 def test_select_cells_frame_local(monkeypatch):
-    import redlem_force.cells as cells_mod
+    import resdlem_force.cells as cells_mod
     v = _values()
     calls = []
     monkeypatch.setattr(cells_mod, 'fetch_cell_values',
@@ -297,8 +297,8 @@ def test_select_cells_frame_local(monkeypatch):
 def _fake_select_cells(record):
     """Fake select_urma_cells: 'cells' = the reservoir polygon itself (EPSG:4326);
     reservoir 'b' gets no cells; 'a' is water-mask."""
-    from redlem_force.cells import CELL_SCHEMA
-    from redlem_force.geometry import load_geometries
+    from resdlem_force.cells import CELL_SCHEMA
+    from resdlem_force.geometry import load_geometries
 
     def fake(native, *, id_col, crs, config, water_mask_col=None,
              geometry_col='geometry', out_dir=None):
@@ -339,13 +339,13 @@ def test_select_urma_cells_output(tmp_path, monkeypatch, kind):
     """Path input -> GeoDataFrame: originals + N_CELLS, ELEV_M, WATER_MASK;
     geometry = the cells in the input CRS; nothing written to disk."""
     pytest.importorskip('geopandas')
-    import redlem_force
-    import redlem_force.files as files
+    import resdlem_force
+    import resdlem_force.files as files
     rec = {}
     monkeypatch.setattr(files, 'select_cells_frame', _fake_select_cells(rec))
     src, path = _reservoir_file(tmp_path, kind)
     before = sorted(p.name for p in tmp_path.iterdir())
-    out = redlem_force.select_urma_cells(
+    out = resdlem_force.select_urma_cells(
         path, id_col='OWEN_ID', config=RunConfig(project='x'),
         layer='reservoirs' if kind == 'gpkg' else None)
     assert sorted(p.name for p in tmp_path.iterdir()) == before   # no files
@@ -365,18 +365,18 @@ def test_select_urma_cells_output(tmp_path, monkeypatch, kind):
 
 def test_select_urma_cells_flag_column_and_errors(tmp_path, monkeypatch):
     pytest.importorskip('geopandas')
-    import redlem_force
-    import redlem_force.files as files
+    import resdlem_force
+    import resdlem_force.files as files
     rec = {}
     monkeypatch.setattr(files, 'select_cells_frame', _fake_select_cells(rec))
     _, path = _reservoir_file(tmp_path, 'shp')
-    redlem_force.select_urma_cells(path, id_col='OWEN_ID',
+    resdlem_force.select_urma_cells(path, id_col='OWEN_ID',
                                    config=RunConfig(project='x'),
                                    water_mask_col='flag')
     assert rec['water_mask_col'] == 'flag'
     assert rec['native']['flag'].to_list() == [True, False, True]
-    for fn in (redlem_force.select_urma_cells,
-               redlem_force.select_prism_cells):
+    for fn in (resdlem_force.select_urma_cells,
+               resdlem_force.select_prism_cells):
         with pytest.raises(TypeError):
             fn(123, id_col='OWEN_ID', config=RunConfig(project='x'))
         with pytest.raises(ValueError, match='crs'):
@@ -386,9 +386,9 @@ def test_select_urma_cells_flag_column_and_errors(tmp_path, monkeypatch):
 def test_urma_and_prism_cell_functions_same_format():
     """Same arguments (URMA adds water_mask_col), same kind of output."""
     import inspect
-    import redlem_force
-    u = inspect.signature(redlem_force.select_urma_cells).parameters
-    p = inspect.signature(redlem_force.select_prism_cells).parameters
+    import resdlem_force
+    u = inspect.signature(resdlem_force.select_urma_cells).parameters
+    p = inspect.signature(resdlem_force.select_prism_cells).parameters
     assert [k for k in u if k != 'water_mask_col'] == list(p)
 
 
@@ -428,7 +428,7 @@ URMA_TEST_CRS = URMA_SPHERE
 
 
 def _urma_grid():
-    from redlem_force.grid_cells import Grid
+    from resdlem_force.grid_cells import Grid
     return Grid.from_projection({'wkt': URMA_WKT,
                                  'transform': URMA_TRANSFORM})
 
@@ -458,7 +458,7 @@ def _two_geom_inputs():
       e : URMA cells 1 cell, PRISM 1 cell
     Returns (gdf, pdf, urma_cells_ll)."""
     gpd = pytest.importorskip('geopandas')
-    from redlem_force import grid_cells as gc
+    from resdlem_force import grid_cells as gc
     urma_ll = [_urma_cells(2, 2, 0), None, _urma_cells(1, 1, 2), None,
                _urma_cells(1, 1, 4)]
     pg = _prism_grid()
@@ -487,15 +487,15 @@ PRISM800 = dict(crs='EPSG:4269', a=0.008333333333, c=-125.02083333333351,
 
 
 def _prism_grid():
-    from redlem_force.grid_cells import Grid
+    from resdlem_force.grid_cells import Grid
     return Grid(**PRISM800)
 
 
 def _stub_ee(monkeypatch):
-    # redlem_force.extract is also the name of the public function, which
+    # resdlem_force.extract is also the name of the public function, which
     # shadows the submodule as a package attribute -- fetch the module itself.
     import importlib
-    ex = importlib.import_module('redlem_force.extract')
+    ex = importlib.import_module('resdlem_force.extract')
     calls = []
     monkeypatch.setattr(ex, 'init_ee', lambda *a, **k: None)
     monkeypatch.setattr(ex.grids, 'grid_from_ee',
@@ -634,7 +634,7 @@ def test_points_are_sent_without_geodesic(monkeypatch):
     """Earth Engine's Point constructor rejects a geodesic argument; polygons
     keep geodesic=False (planar edges)."""
     import importlib
-    ex = importlib.import_module('redlem_force.extract')
+    ex = importlib.import_module('resdlem_force.extract')
     calls = []
     monkeypatch.setattr(ex.ee, 'Geometry',
                         lambda *a, **k: calls.append((a, k)) or a[0])
@@ -679,7 +679,7 @@ def _px(grid, col, row, dx0=0.0, dy0=0.0, dx1=1.0, dy1=1.0):
 
 
 def test_prism_cells_rule():
-    from redlem_force import grid_cells as gc
+    from resdlem_force import grid_cells as gc
     grid = _prism_grid()
     # exactly 3x2 pixels: those 6 only (neighbours touch, do not count)
     rect = _px(grid, 1000, 500, 0, 0, 3, 2)
@@ -722,7 +722,7 @@ def test_prism_overlaps_and_ring():
     """overlaps(): full pixels get the pixel area, edge pixels their
     intersection; total = polygon area. A ring (lake with an island) never
     takes the island pixel ahead of water pixels."""
-    from redlem_force import grid_cells as gc
+    from resdlem_force import grid_cells as gc
     grid = _prism_grid()
     poly = _px(grid, 1000, 500, 0.25, 0.25, 4.5, 3.75)
     cc, rr, ov = gc.overlaps(poly, grid)
@@ -743,8 +743,8 @@ def test_prism_overlaps_and_ring():
 def test_prism_cells_build_and_wgs84(monkeypatch):
     """build(): polygons follow pixel edges; sent in EPSG:4326 as
     polygons, single cells included."""
-    from redlem_force import grid_cells as gc
-    from redlem_force.geometry import internal_points
+    from resdlem_force import grid_cells as gc
+    from resdlem_force.geometry import internal_points
     grid = _prism_grid()
     big = _px(grid, 1000, 500, 0.1, 0.1, 3.9, 2.9)           # 4x3 pixels
     tiny = _px(grid, 1010, 500, 0.2, 0.2, 0.4, 0.4)
@@ -763,8 +763,8 @@ def test_select_prism_cells_output(tmp_path, monkeypatch):
     N_CELLS; geometry = the cell polygons in the input CRS; no files."""
     gpd = pytest.importorskip('geopandas')
     import importlib
-    import redlem_force
-    pc = importlib.import_module('redlem_force.prism_cells')
+    import resdlem_force
+    pc = importlib.import_module('resdlem_force.prism_cells')
     monkeypatch.setattr(pc, 'grid_from_ee', lambda s, cfg: _prism_grid())
     grid = _prism_grid()
     shapes = [_px(grid, 1000, 500, 0.1, 0.1, 3.9, 2.9),
@@ -774,13 +774,13 @@ def test_select_prism_cells_output(tmp_path, monkeypatch):
     path = tmp_path / 'res.gpkg'
     src.to_file(path, driver='GPKG')
     cfg = RunConfig(project='x')
-    out = redlem_force.select_prism_cells(path, id_col='OWEN_ID', config=cfg)
+    out = resdlem_force.select_prism_cells(path, id_col='OWEN_ID', config=cfg)
     assert sorted(p.name for p in tmp_path.iterdir()) == ['res.gpkg']
     assert list(out.columns) == ['OWEN_ID', 'NAME', 'N_CELLS', 'geometry']
     assert out['N_CELLS'].tolist() == [11, 1]     # 10.64 px of area
     assert out.crs.equals(src.crs)
     assert out.geometry.geom_type.tolist() == ['Polygon', 'Polygon']
-    again = redlem_force.select_prism_cells(gpd.read_file(path),
+    again = resdlem_force.select_prism_cells(gpd.read_file(path),
                                             id_col='OWEN_ID', config=cfg)
     assert again.drop(columns='geometry').equals(out.drop(columns='geometry'))
     assert all(a.equals(b) for a, b in zip(again.geometry, out.geometry))
@@ -789,8 +789,8 @@ def test_select_prism_cells_output(tmp_path, monkeypatch):
 # --- worker: per-(reservoir, day) precip fallback (no Earth Engine) -----------
 def test_extract_chunk_precip_fallback(monkeypatch):
     import importlib
-    ex = importlib.import_module('redlem_force.extract')
-    from redlem_force.config import ID_PROP
+    ex = importlib.import_module('resdlem_force.extract')
+    from resdlem_force.config import ID_PROP
     days = ['20200715', '20200716']
     ids = ['a', 'b', 'c']
     met_geo = {i: {'type': 'Point', 'coordinates': [0, 0], 'm': i} for i in ids}
@@ -809,7 +809,7 @@ def test_extract_chunk_precip_fallback(monkeypatch):
         # urma: c first day only
         'urma': [('c', days[0], 5.0)],
     }
-    from redlem_force.config import PRISM_800_ID, PRISM_4K_ID, URMA_ID
+    from resdlem_force.config import PRISM_800_ID, PRISM_4K_ID, URMA_ID
     key = {PRISM_800_ID: 'p800', PRISM_4K_ID: 'p4k', URMA_ID: 'urma'}
 
     def fake_precip(coll_id, band, labels, features, cfg, grid_proj=None):
@@ -853,8 +853,8 @@ def test_extract_chunk_precip_fallback(monkeypatch):
 
 def test_met_and_precip_long():
     import importlib
-    ex = importlib.import_module('redlem_force.extract')
-    from redlem_force.config import ID_PROP, URMA_OUTPUT
+    ex = importlib.import_module('resdlem_force.extract')
+    from resdlem_force.config import ID_PROP, URMA_OUTPUT
     days = ['20200715', '20200716']
     wide = {ID_PROP: ['a', 'b']}
     for d in days:
@@ -873,7 +873,7 @@ def test_met_and_precip_long():
 
 # --- request size: chunking and splitting (no Earth Engine) -----------------
 def test_chunk_by_size():
-    from redlem_force.geometry import chunk_by_size
+    from resdlem_force.geometry import chunk_by_size
     ids = list('abcdef')
     sizes = {'a': (3, 1), 'b': (3, 1), 'c': (5, 1), 'd': (1, 9), 'e': (1, 1),
              'f': (20, 1)}
@@ -893,8 +893,8 @@ def test_extract_job_splits_and_reports_missing_days(monkeypatch):
     payload-size error; the job must split down and still return every
     reservoir. A day with no URMA image is reported, not fatal."""
     import importlib
-    ex = importlib.import_module('redlem_force.extract')
-    from redlem_force.config import ID_PROP
+    ex = importlib.import_module('resdlem_force.extract')
+    from resdlem_force.config import ID_PROP
     labels = ['20200715', '20200716']
     monkeypatch.setattr(ex, '_block_info', lambda lab, precip, cfg: (
         {'urma': ['20200715'], 'prism800': labels, 'prism4k': labels,
@@ -929,7 +929,7 @@ _STATUS = {'limit_eecu_h': 1000.0, 'used_eecu_h': 15.0,
 
 
 def test_estimate_and_check_quota():
-    from redlem_force.quota import (QuotaExceededError, check_quota,
+    from resdlem_force.quota import (QuotaExceededError, check_quota,
                                   estimate_eecu_hours)
     assert estimate_eecu_hours(36_000, 0.1) == pytest.approx(1.0)
     cfg = RunConfig(project='x', eecu_s_per_reservoir_day=0.15)
@@ -949,8 +949,8 @@ def test_estimate_and_check_quota():
 
 def test_quota_gate_prints_and_skips_when_unavailable(monkeypatch, capsys):
     import importlib
-    ex = importlib.import_module('redlem_force.extract')
-    from redlem_force.quota import QuotaExceededError, QuotaUnavailableError
+    ex = importlib.import_module('resdlem_force.extract')
+    from resdlem_force.quota import QuotaExceededError, QuotaUnavailableError
     jobs = [{'cells': [('a', {}), ('b', {})], 'labels': ['20200715']},
             {'cells': [('c', {})], 'labels': ['20200715']}]
     cfg = RunConfig(project='x')
@@ -987,7 +987,7 @@ def test_quota_gate_prints_and_skips_when_unavailable(monkeypatch, capsys):
 
 def test_quota_status_without_monitoring_library(monkeypatch):
     import builtins
-    from redlem_force.quota import QuotaUnavailableError, quota_status
+    from resdlem_force.quota import QuotaUnavailableError, quota_status
     real_import = builtins.__import__
 
     def no_monitoring(name, *a, **k):
@@ -1000,7 +1000,7 @@ def test_quota_status_without_monitoring_library(monkeypatch):
 
 
 def test_parse_profile_eecu():
-    from redlem_force.quota import parse_profile_eecu
+    from resdlem_force.quota import parse_profile_eecu
     table = """ EECU·s PeakMem Count  Description
      10.981    101M    68  Algorithm Image.exp computing pixels
       9.523    162M    64  Loading assets: x
@@ -1018,9 +1018,9 @@ if __name__ == '__main__':
 # --- end to end with Earth Engine replaced (no network) -----------------------
 def _fake_ee_run(monkeypatch, missing_urma=()):
     ex = _stub_ee(monkeypatch)
-    import redlem_force.ee_utils as eu
+    import resdlem_force.ee_utils as eu
     monkeypatch.setattr(eu, 'init_ee', lambda *a, **k: None)
-    from redlem_force.config import ID_PROP, URMA_OUTPUT
+    from resdlem_force.config import ID_PROP, URMA_OUTPUT
 
     def block_info(labels, precip, cfg):
         days = [d for d in labels if d not in missing_urma]
@@ -1053,7 +1053,7 @@ def test_extract_urma_end_to_end_fake_ee(monkeypatch):
     """extract_urma returns a pandas DataFrame: output columns in order,
     numbers float64, text object, sorted by id and date."""
     import pandas as pd
-    from redlem_force.config import OUTPUT_COLS_AFTER_ID
+    from resdlem_force.config import OUTPUT_COLS_AFTER_ID
     ex = _fake_ee_run(monkeypatch)
     gdf, _, _ = _two_geom_inputs()
     cfg = RunConfig(project='x', n_workers=1, check_quota=False,
@@ -1076,6 +1076,9 @@ def test_extract_urma_end_to_end_fake_ee(monkeypatch):
                           config=cfg, dates='2020-07-15', precip=False,
                           prism_cells_col=None)
     assert 'pr' not in met.columns and 'pr_source' not in met.columns
+    met2 = ex.extract_urma(gdf.drop(columns='prism_cells'), id_col='OWEN_ID',
+                           config=cfg, dates='2020-07-15', precip=False)
+    assert list(met2.columns) == list(met.columns)
 
 
 def test_extract_missing_urma_day_is_reported(monkeypatch):
@@ -1093,8 +1096,8 @@ def test_extract_missing_urma_day_is_reported(monkeypatch):
 
 # --- reference grids and cell-value download (Earth Engine replaced) -------
 def test_grid_info_and_cell_value_tiles(monkeypatch):
-    import redlem_force.cells as cells_mod
-    import redlem_force.grids as grids
+    import resdlem_force.cells as cells_mod
+    import resdlem_force.grids as grids
     grids._CACHE.clear()
     transform = URMA_TRANSFORM
     answers = iter([
@@ -1187,7 +1190,7 @@ def test_local_crs_uses_the_sphere_earth_engine_uses():
     local_crs() must give the 6,371,200 m sphere, which matched Earth
     Engine to 0.000 m (probe_urma_crs.py)."""
     import pyproj
-    from redlem_force.grid_cells import local_crs
+    from resdlem_force.grid_cells import local_crs
     crs = local_crs(URMA_WKT)
     pts = [(-125, 25), (-117, 31), (-101, 37), (-85, 43), (-69, 49)]
     mine = pyproj.Transformer.from_crs('EPSG:4326', crs, always_xy=True)
@@ -1207,8 +1210,8 @@ def test_local_crs_uses_the_sphere_earth_engine_uses():
 
 
 def test_grid_check_stops_on_a_crs_mismatch(monkeypatch):
-    import redlem_force.grids as grids
-    from redlem_force.grid_cells import Grid
+    import resdlem_force.grids as grids
+    from resdlem_force.grid_cells import Grid
     naive = Grid('+proj=lcc +lat_1=25 +lat_0=25 +lon_0=-95 +datum=WGS84 '
                  '+units=m', *URMA_TRANSFORM[::2][:1], URMA_TRANSFORM[2],
                  URMA_TRANSFORM[4], URMA_TRANSFORM[5], URMA_WKT)
@@ -1230,9 +1233,9 @@ def test_plot_cells(tmp_path, monkeypatch):
     pytest.importorskip('matplotlib')
     gpd = pytest.importorskip('geopandas')
     import pyproj
-    import redlem_force
-    from redlem_force import figures
-    from redlem_force.cells import CellValues
+    import resdlem_force
+    from resdlem_force import figures
+    from resdlem_force.cells import CellValues
     ug, pg = _urma_grid(), _prism_grid()
     monkeypatch.setattr(figures.grids, 'grid_from_ee',
                         lambda s, cfg: pg if s == 'prism800' else ug)
@@ -1248,7 +1251,7 @@ def test_plot_cells(tmp_path, monkeypatch):
     c0, r0 = ug.col_row(ux, uy)
     values = CellValues(ug, c0 - 20, r0 - 20, np.zeros((40, 40)),
                         np.ones((40, 40)))
-    out = redlem_force.plot_cells(gdf, id_col='OWEN_ID', ids=['A'],
+    out = resdlem_force.plot_cells(gdf, id_col='OWEN_ID', ids=['A'],
                                 title_col='NAME', basemap=None,
                                 config=RunConfig(project='x'), values=values,
                                 out_dir=tmp_path, formats=('png', 'pdf'),
@@ -1256,7 +1259,7 @@ def test_plot_cells(tmp_path, monkeypatch):
     assert list(out) == ['A']
     assert [p.name for p in out['A']] == ['A_cells.png', 'A_cells.pdf']
     assert all(p.stat().st_size > 1000 for p in out['A'])
-    figs = redlem_force.plot_cells(gdf, id_col='OWEN_ID', ids=['A'],
+    figs = resdlem_force.plot_cells(gdf, id_col='OWEN_ID', ids=['A'],
                                  basemap=None, config=RunConfig(project='x'),
                                  values=values, return_figures=True)
     labels = [t.get_text() for t in figs['A'].legends[0].get_texts()]
@@ -1266,7 +1269,7 @@ def test_plot_cells(tmp_path, monkeypatch):
     # no water anywhere -> overlap/elevation cells, drawn dashed
     dry = CellValues(ug, c0 - 20, r0 - 20, np.zeros((40, 40)),
                      np.zeros((40, 40)))
-    figs = redlem_force.plot_cells(gdf, id_col='OWEN_ID', ids=['A'],
+    figs = resdlem_force.plot_cells(gdf, id_col='OWEN_ID', ids=['A'],
                                  basemap=None, config=RunConfig(project='x'),
                                  values=dry, return_figures=True)
     texts = [t.get_text() for t in figs['A'].axes[0].texts]
@@ -1274,7 +1277,7 @@ def test_plot_cells(tmp_path, monkeypatch):
     import matplotlib.pyplot as plt
     plt.close('all')
     with pytest.raises(ValueError):
-        redlem_force.plot_cells(gdf, id_col='OWEN_ID', basemap='osm',
+        resdlem_force.plot_cells(gdf, id_col='OWEN_ID', basemap='osm',
                               config=RunConfig(project='x'), values=values)
 
 
@@ -1284,7 +1287,7 @@ def test_repair_log_names_the_geometry(caplog):
     import logging
     bow = shapely.Polygon([(0, 0), (2, 2), (2, 0), (0, 2)])     # bow-tie
     df = pl.DataFrame({'id': ['x'], 'geometry': [shapely.to_wkb(bow)]})
-    with caplog.at_level(logging.INFO, logger='redlem_force'):
+    with caplog.at_level(logging.DEBUG, logger='resdlem_force'):
         gs = load_geometries(df, 'id', 'geometry', 'EPSG:5070',
                              label='native reservoir')
         load_geometries(df, 'id', 'geometry', 'EPSG:5070',
@@ -1292,14 +1295,14 @@ def test_repair_log_names_the_geometry(caplog):
     assert gs.repaired_ids == ['x'] and gs.geoms[0].is_valid
     recs = [(r.levelname, r.getMessage()) for r in caplog.records
             if 'repaired' in r.getMessage()]
-    assert recs[0][0] == 'INFO' and 'invalid native reservoir' in recs[0][1]
+    assert recs[0][0] == 'DEBUG' and 'invalid native reservoir' in recs[0][1]
     assert recs[1][0] == 'WARNING' and 'invalid URMA cell' in recs[1][1]
 
 
 def test_built_cell_polygons_are_valid():
     """Scattered cells (diagonal neighbours, holes) on both grids give
     valid polygons, also after reprojection to EPSG:4326 / 5070."""
-    from redlem_force import grid_cells as gc
+    from resdlem_force import grid_cells as gc
     rng = np.random.default_rng(0)
     for grid, (c0, r0) in ((_urma_grid(), (1500, 800)),
                            (_prism_grid(), (3000, 1500))):
@@ -1318,7 +1321,7 @@ def test_cell_geometry_falls_back_when_coverage_union_invalid(monkeypatch):
     """Some GEOS versions give an invalid ring from coverage_union_all for
     cells touching only at a corner around a gap (seen on a real reservoir,
     PRISM cells below); the squares are then joined with union_all."""
-    from redlem_force import grid_cells as gc
+    from resdlem_force import grid_cells as gc
     grid = _prism_grid()
     cells = [(3689, 357), (3690, 357), (3686, 358), (3687, 358), (3688, 358),
              (3689, 358), (3690, 358), (3691, 358), (3692, 358), (3686, 359),
@@ -1343,7 +1346,7 @@ def test_cell_geometry_falls_back_when_coverage_union_invalid(monkeypatch):
 def test_cell_geometry_fallback_urma_case(monkeypatch):
     """Same fallback on the URMA grid, with the cells of a real reservoir
     that failed on an older GEOS (258 cells, corner contacts)."""
-    from redlem_force import grid_cells as gc
+    from resdlem_force import grid_cells as gc
     URMA_CASE = [(1104, 517), (1105, 518), (1106, 519), (1107, 519),
                  (1107, 520), (1107, 522), (1107, 523), (1106, 526),
                  (1106, 527), (1107, 528), (1107, 529), (1107, 530),
@@ -1462,15 +1465,15 @@ def test_select_urma_cells_geodataframe(tmp_path, monkeypatch):
     """A GeoDataFrame (as read from the GeoPackage) gives the same output as
     the file path."""
     gpd = pytest.importorskip('geopandas')
-    import redlem_force
-    import redlem_force.files as files
+    import resdlem_force
+    import resdlem_force.files as files
     monkeypatch.setattr(files, 'select_cells_frame', _fake_select_cells({}))
     src, path = _reservoir_file(tmp_path, 'gpkg')
     cfg = RunConfig(project='x')
-    from_file = redlem_force.select_urma_cells(
+    from_file = resdlem_force.select_urma_cells(
         path, id_col='OWEN_ID', config=cfg, layer='reservoirs')
     gdf = gpd.read_file(path, layer='reservoirs')
-    from_gdf = redlem_force.select_urma_cells(gdf, id_col='OWEN_ID',
+    from_gdf = resdlem_force.select_urma_cells(gdf, id_col='OWEN_ID',
                                               config=cfg)
     assert list(from_gdf.columns) == list(from_file.columns)
     assert from_gdf.drop(columns='geometry').equals(
@@ -1478,3 +1481,28 @@ def test_select_urma_cells_geodataframe(tmp_path, monkeypatch):
     assert all(a is None and b is None or a.equals(b) for a, b in
                zip(from_gdf.geometry, from_file.geometry))
     assert from_gdf.crs.equals(gdf.crs)
+
+
+def test_selection_info_log_is_three_lines(tmp_path, monkeypatch, caplog):
+    """select_urma_cells / select_prism_cells log only started, processing
+    N geometries, finished at INFO (warnings only when something is wrong)."""
+    import importlib
+    import logging
+    gpd = pytest.importorskip('geopandas')
+    import resdlem_force
+    import resdlem_force.files as files
+    pc = importlib.import_module('resdlem_force.prism_cells')
+    monkeypatch.setattr(files, 'select_cells_frame', _fake_select_cells({}))
+    monkeypatch.setattr(pc, 'grid_from_ee', lambda s, cfg: _prism_grid())
+    src, _ = _reservoir_file(tmp_path, 'gpkg')
+    cfg = RunConfig(project='x')
+    for fn, name in [(resdlem_force.select_urma_cells, 'select_urma_cells'),
+                     (resdlem_force.select_prism_cells, 'select_prism_cells')]:
+        caplog.clear()
+        with caplog.at_level(logging.INFO, logger='resdlem_force'):
+            fn(src, id_col='OWEN_ID', config=cfg)
+        info = [r.getMessage() for r in caplog.records
+                if r.levelno == logging.INFO]
+        assert info == [f'{name}: started',
+                        f'{name}: processing 3 geometries',
+                        f'{name}: finished'], info

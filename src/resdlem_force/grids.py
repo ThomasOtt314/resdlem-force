@@ -3,9 +3,8 @@
   urma     : the first URMA daily image of 2026 (by system:index), band TMAX.
              Checked: every band shares this grid; all 17,089 daily
              images 1980-01-01 to 2026-10-14 sit on the same pixel
-             lattice; rtma_elev /
-             rtma_water_mask sit on the same lattice (identical CRS and
-             pixel size, origins whole pixels apart).
+             lattice; the URMA water mask sits on the same lattice
+             (identical CRS and pixel size, origin offset 0).
   prism800 : the first image of the PRISM 800 m collection, band ppt.
              Checked: the same grid on 549 dates, 1981-2026.
 
@@ -29,7 +28,7 @@ from .config import GRID_REFERENCE, RunConfig
 from .ee_utils import get_info, init_ee
 from .grid_cells import Grid
 
-log = logging.getLogger('redlem_force')
+log = logging.getLogger('resdlem_force')
 
 _CACHE: dict = {}
 
@@ -74,7 +73,7 @@ def grid_info(source: str, config: RunConfig) -> dict:
         _CACHE[key] = {'grid': grid, 'image': info['index'],
                        'width': dims[0], 'height': dims[1],
                        'col0': int(origin[0]), 'row0': int(origin[1])}
-        log.info('%s grid from image %s: pixel %.10g x %.10g, origin '
+        log.debug('%s grid from image %s: pixel %.10g x %.10g, origin '
                  '(%.10g, %.10g), %s x %s pixels from col/row %s', source,
                  info['index'], grid.a, grid.e, grid.c, grid.f, dims[0],
                  dims[1], origin)
@@ -116,7 +115,7 @@ def _verify(source: str, grid: Grid, dims, origin, config: RunConfig):
             f'Engine (off by {worst:.6g} CRS units = {worst / abs(grid.a):.3f}'
             f' pixels). Cells built locally would land on the wrong pixels. '
             f'Local CRS: {grid.crs}')
-    log.info('%s grid: local CRS matches Earth Engine (max %.3g CRS units '
+    log.debug('%s grid: local CRS matches Earth Engine (max %.3g CRS units '
              'on 5 pixel centres)', source, worst)
 
 

@@ -2,10 +2,10 @@
 for the met variables.
 
 Everything is computed locally on the URMA grid of the reference image
-(redlem_force.grids: the first URMA daily image of 2026). Earth Engine is
+(resdlem_force.grids: the first URMA daily image of 2026). Earth Engine is
 used for two things only:
   * the grid definition (CRS + affine transform), one small request
-  * rtma_elev and rtma_water_mask read ONCE as arrays on that same grid
+  * the URMA elevation and water mask read ONCE as arrays on that same grid
     (they sit on the same lattice; checked 2026-10-13), one value
     per URMA cell
 No grid-cell asset and no per-reservoir Earth Engine requests.
@@ -32,7 +32,7 @@ Output columns:
   wm_value      flag value used (rule: max water mask of the candidates;
                 null = no water-mask data there)
   cell_method   water_mask | water_mask_fallback | overlap_elevation
-  cell_elev_m   mean rtma_elev of the selected cells (-> ELEV_M)
+  cell_elev_m   mean elevation of the selected cells (-> ELEV_M)
 """
 
 from __future__ import annotations
@@ -51,7 +51,7 @@ from .ee_utils import init_ee, with_retries
 from .geometry import load_geometries, reproject
 from .grid_cells import Grid, cell_geometry
 
-log = logging.getLogger('redlem_force')
+log = logging.getLogger('resdlem_force')
 
 CELL_SCHEMA = {
     'cell_geometry': pl.Binary,
@@ -68,7 +68,7 @@ ROWS_PER_REQUEST = 256        # computePixels tile height (rows of the grid)
 # Per-cell values on the URMA grid (one download per run)
 # ---------------------------------------------------------------------------
 class CellValues:
-    """rtma_elev / rtma_water_mask per URMA cell, as arrays indexed by the
+    """URMA elevation / water mask per URMA cell, as arrays indexed by the
     reference grid's (col, row). NaN = no data."""
 
     def __init__(self, grid: Grid, col0, row0, elev, wm):
@@ -88,7 +88,7 @@ class CellValues:
 
 
 def _value_image():
-    elev = ee.Image(ELEV_ID).select(0)
+    elev = ee.Image(ELEV_ID).select('elevation')       # m
     wm = ee.Image(WM_ID).select(0)
     # data values, and 1/0 masks so missing pixels can be told apart
     return ee.Image.cat([
@@ -100,7 +100,7 @@ def _value_image():
 
 
 def fetch_cell_values(config: RunConfig) -> CellValues:
-    """Read rtma_elev / rtma_water_mask on the URMA reference grid, over the
+    """Read URMA elevation / water mask on the URMA reference grid, over the
     reference image's pixel extent, in tiles of ROWS_PER_REQUEST rows."""
     info = grids.grid_info('urma', config)
     grid, w, h = info['grid'], info['width'], info['height']
@@ -133,7 +133,7 @@ def fetch_cell_values(config: RunConfig) -> CellValues:
                            config.max_retries, config.retry_wait_secs)
         elev[r:r + n] = np.where(arr['elev_ok'] > 0, arr['elev'], np.nan)
         wm[r:r + n] = np.where(arr['wm_ok'] > 0, arr['wm'], np.nan)
-    log.info('URMA cell values: %d x %d cells; elevation for %d, water mask '
+    log.debug('URMA cell values: %d x %d cells; elevation for %d, water mask '
              'for %d (%d water cells)', w, h, int(np.isfinite(elev).sum()),
              int(np.isfinite(wm).sum()), int((wm == 1).sum()))
     return CellValues(grid, col0, row0, elev, wm)
@@ -213,7 +213,7 @@ def _log_summary(df: pl.DataFrame, id_col: str):
     if len(fb):
         log.warning('%d water-mask reservoirs had no water cells and used the '
                     'overlap/elevation rule: %s', len(fb), fb.to_list()[:20])
-    log.info('cell_method counts: %s', df['cell_method'].value_counts().rows())
+    log.debug('cell_method counts: %s', df['cell_method'].value_counts().rows())
 
 
 # ---------------------------------------------------------------------------
@@ -266,7 +266,7 @@ def _select_cells_frame(native: pl.DataFrame, *, id_col: str, crs,
         **{c: [r[c] for r in rows] for c in CELL_SCHEMA
            if c != 'cell_geometry'},
     }, schema={id_col: pl.Utf8, **CELL_SCHEMA}).sort(id_col)
-    log.info('select_urma_cells: %d reservoirs, water mask from %s',
+    log.debug('select_urma_cells: %d reservoirs, water mask from %s',
              out.height, water_mask_col or 'the rule')
     _log_summary(out, id_col)
     return out
@@ -298,20 +298,26 @@ def select_urma_cells(geometry, *, id_col: str, config: RunConfig,
     water_mask_col : existing 0/1 / Boolean column for the flag; None = the
                      rule (max water mask of the intersecting cells == 1)
     """
+    log.info('select_urma_cells: started')
     if isinstance(geometry, pl.DataFrame):
         if crs is None:
             raise ValueError('crs is required when geometry is a DataFrame')
-        return _select_cells_frame(geometry, id_col=id_col, crs=crs,
-                                   config=config,
-                                   water_mask_col=water_mask_col,
-                                   geometry_col=geometry_col)
-    from .files import is_geodataframe, urma_cells
-    if not (is_geodataframe(geometry)
-            or isinstance(geometry, (str, os.PathLike))):
-        raise TypeError('geometry must be a GeoDataFrame, a file path (.shp / '
-                        '.gpkg) or a polars DataFrame, got '
-                        f'{type(geometry).__name__}')
-    return urma_cells(geometry, id_col=id_col, config=config,
-                      layer=layer,
-                      water_mask_col=water_mask_col, sample=sample,
-                      sample_seed=sample_seed)
+        log.info('select_urma_cells: processing %d geometries',
+                 geometry.height)
+        out = _select_cells_frame(geometry, id_col=id_col, crs=crs,
+                                  config=config,
+                                  water_mask_col=water_mask_col,
+                                  geometry_col=geometry_col)
+    else:
+        from .files import is_geodataframe, urma_cells
+        if not (is_geodataframe(geometry)
+                or isinstance(geometry, (str, os.PathLike))):
+            raise TypeError('geometry must be a GeoDataFrame, a file path '
+                            '(.shp / .gpkg) or a polars DataFrame, got '
+                            f'{type(geometry).__name__}')
+        out = urma_cells(geometry, id_col=id_col, config=config,
+                         layer=layer,
+                         water_mask_col=water_mask_col, sample=sample,
+                         sample_seed=sample_seed)
+    log.info('select_urma_cells: finished')
+    return out

@@ -30,7 +30,7 @@ import logging
 import re
 import time
 
-log = logging.getLogger('redlem_force')
+log = logging.getLogger('resdlem_force')
 
 _LIMIT_METRIC = 'serviceruntime.googleapis.com/quota/limit'
 _USAGE_METRIC = 'serviceruntime.googleapis.com/quota/allocation/usage'

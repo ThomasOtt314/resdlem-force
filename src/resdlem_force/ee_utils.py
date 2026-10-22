@@ -14,7 +14,7 @@ import requests
 
 from .config import ID_PROP
 
-log = logging.getLogger('redlem_force')
+log = logging.getLogger('resdlem_force')
 
 # Substrings that mark an error worth retrying as-is (quota, transient server
 # or network trouble). Network timeouts are caught by type below.

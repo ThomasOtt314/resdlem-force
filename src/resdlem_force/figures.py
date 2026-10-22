@@ -30,8 +30,8 @@ Map
     latitude (pyproj scale factor)
   * legend below the map: Reservoir, URMA 2.5 km cells, PRISM 800 m cells
 
-Earth Engine: the two grid definitions and, for URMA, the rtma_elev /
-rtma_water_mask arrays (~7 requests, once per Python session; pass
+Earth Engine: the two grid definitions and, for URMA, the URMA elevation /
+water mask arrays (~7 requests, once per Python session; pass
 `values` to reuse them). Nothing per reservoir.
 """
 
@@ -52,7 +52,7 @@ from . import grid_cells, grids
 from .config import RunConfig
 from .geometry import internal_points, load_geometries, reproject
 
-log = logging.getLogger('redlem_force')
+log = logging.getLogger('resdlem_force')
 
 MAP_CRS = 'EPSG:3857'
 
